@@ -20,10 +20,14 @@ else
       exit 1
     fi
   done
+  restaurar_contexto() {
+    if [ -n "${CTX_ANTERIOR}" ] && [ "${CTX_ANTERIOR}" != "${CTX}" ]; then
+      kubectl config use-context "${CTX_ANTERIOR}" >/dev/null 2>&1 || true
+    fi
+  }
+  trap restaurar_contexto EXIT INT TERM
   kind create cluster --config "${RAIZ}/kind/cluster.yaml"
-  if [ -n "${CTX_ANTERIOR}" ] && [ "${CTX_ANTERIOR}" != "${CTX}" ]; then
-    kubectl config use-context "${CTX_ANTERIOR}" >/dev/null
-  fi
+  restaurar_contexto
 fi
 
 echo "Aplicando Ingress NGINX (controller-v1.11.2)..."
@@ -32,11 +36,8 @@ ${K} -n ingress-nginx rollout status deployment/ingress-nginx-controller --timeo
 ${K} -n ingress-nginx wait --for=condition=complete job/ingress-nginx-admission-create --timeout=120s || true
 
 echo "Aplicando k8s/..."
-if ! ${K} apply -k "${RAIZ}/k8s"; then
-  echo "apply falhou; recriando job/kafka-topicos e tentando de novo..."
-  ${K} -n autocenter delete job kafka-topicos --ignore-not-found
-  ${K} apply -k "${RAIZ}/k8s"
-fi
+${K} -n autocenter delete job kafka-topicos --ignore-not-found
+${K} apply -k "${RAIZ}/k8s"
 
 ${K} -n autocenter rollout status statefulset/kafka --timeout=240s
 echo "Pronto. Aguarde o job: kubectl --context ${CTX} -n autocenter wait --for=condition=complete job/kafka-topicos --timeout=180s"

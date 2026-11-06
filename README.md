@@ -47,7 +47,9 @@ use `imagePullPolicy: IfNotPresent` e `namespace: autocenter` nos manifests, e
 `kubectl --context kind-autocenter apply -f ...`.
 
 **Do host (desenvolvimento local, fora do cluster):** bootstrap `localhost:9094`
-(listener EXTERNO, anunciado como `localhost:9094`).
+(listener EXTERNO, anunciado como `localhost:9094`). Validado com cliente real
+no host (`docker run --rm --network host apache/kafka:3.8.0`): criou topico
+temporario, produziu e consumiu 1 mensagem e removeu o topico.
 
 **Ingress:** controller `ingress-nginx` v1.11.2, `ingressClassName: nginx`;
 `http://localhost/` responde 404 do nginx ate existir um Ingress.
@@ -68,7 +70,11 @@ kubectl --context kind-autocenter -n autocenter create secret generic datadog-se
   --from-literal=api-key='<SUA_DD_API_KEY>'
 kubectl --context kind-autocenter apply -f k8s/datadog.yaml
 ```
-Nunca versione a chave. Baseado em `autocenter/terraform/datadog.tf` (agent 7.83.1).
+Nunca versione a chave. Baseado em `autocenter/terraform/datadog.tf` (agent 7.83.1),
+adaptado ao containerd do kind (socket `/run/containerd/containerd.sock`).
+Validado apenas que o pod sobe e detecta containerd/kubelet; a **entrega real ao
+Datadog nao foi validada** (ainda nao ha chave real; com chave falsa o agent
+recebe 403).
 
 ## Remover
 `kind delete cluster --name autocenter` (apenas este; nao afeta outros clusters).
