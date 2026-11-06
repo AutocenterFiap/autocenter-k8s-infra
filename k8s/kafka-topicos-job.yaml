@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-topicos
+  namespace: autocenter
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      enableServiceLinks: false
+      containers:
+        - name: topicos
+          image: apache/kafka:3.8.0
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -eu
+              BIN=/opt/kafka/bin
+              until $BIN/kafka-topics.sh --bootstrap-server kafka:9092 --list >/dev/null 2>&1; do
+                echo "aguardando kafka:9092..."; sleep 3
+              done
+              for t in os.eventos billing.comandos execucao.comandos \
+                       billing.eventos execucao.eventos \
+                       billing.eventos.dlt execucao.eventos.dlt; do
+                $BIN/kafka-topics.sh --bootstrap-server kafka:9092 --create \
+                  --if-not-exists --topic "$t" --partitions 3 --replication-factor 1
+              done
+              $BIN/kafka-topics.sh --bootstrap-server kafka:9092 --list
