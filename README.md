@@ -62,6 +62,20 @@ kubectl --context kind-autocenter -n autocenter exec kafka-0 -- \
 (aparece tambem `__consumer_offsets`, interno.) Os dados ficam em PVC de 5Gi e
 sobrevivem a reinicio do pod; o cluster id KRaft e fixo.
 
+## Kafka UI (visualizar o Kafka)
+`k8s/kafka-ui.yaml` sobe o [Kafka UI](https://github.com/kafbat/kafka-ui) (kafbat,
+Apache 2.0, `kafbat/kafka-ui:v1.5.0`) junto com o resto do `criar-cluster.sh`.
+Abra **http://kafka-ui.localhost/** (Ingress com host proprio; `*.localhost`
+resolve para 127.0.0.1). Mostra broker, topicos/particoes, mensagens (com filtro),
+consumer groups com lag, e permite publicar mensagens para testar a Saga.
+
+Sem login e com escrita liberada (apagar/criar topico, publicar): uso so em dev
+local. Se um topico for apagado por engano, recrie com o Job `kafka-topicos`
+(`./scripts/criar-cluster.sh`). Logo apos subir o pod, o Ingress pode responder
+503 por alguns segundos ate registrar o endpoint.
+
+Num cluster ja existente, basta: `kubectl --context kind-autocenter apply -f k8s/kafka-ui.yaml`.
+
 ## Datadog (opcional, fora do apply padrao)
 `k8s/datadog.yaml` nao entra no `k8s/kustomization.yaml`: sem o Secret o pod
 ficaria travado. Para usar:
