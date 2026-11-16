@@ -22,6 +22,25 @@ ocupadas o script aborta sem matar nada. Um cluster kind antigo que mapeie 80/44
 Na maquina de cada um, o cluster e independente (nao ha compartilhamento entre
 maquinas): cada pessoa roda o script e tem seu proprio Kafka.
 
+## Homologacao (cluster `autocenter-qa`)
+Um segundo cluster kind, `autocenter-qa` (contexto `kind-autocenter-qa`), representa o ambiente de
+homologacao. Ele roda junto com o `autocenter`, na mesma maquina, com portas e rede docker proprias:
+
+| | Dev (`autocenter`) | Homologacao (`autocenter-qa`) |
+|---|---|---|
+| Subir | `./scripts/criar-cluster.sh` | `./scripts/criar-cluster.sh qa` |
+| Contexto | `kind-autocenter` | `kind-autocenter-qa` |
+| Ingress (host) | `http://localhost/` | `http://localhost:18080/` |
+| Kafka do host | `localhost:9094` | `localhost:19094` |
+| Kafka UI | `http://kafka-ui.localhost/` | `http://kafka-ui.localhost:18080/` |
+| Rede docker | `autocenter` | `autocenter-qa` (`172.31.0.0/16`) |
+| Manifestos | `k8s/` | `overlays/qa/` (base `k8s/` + endereco externo do Kafka) |
+
+Os microsservicos fazem deploy no `autocenter-qa` a cada push (merge) na branch `homologacao` e no
+`autocenter` a cada push na `main`, pelo runner self-hosted desta maquina.
+
+Remover so a homologacao: `kind delete cluster --name autocenter-qa && docker network rm autocenter-qa`.
+
 ## Topicos (todos com 3 particoes, replicacao 1)
 `os.eventos`, `billing.comandos`, `execucao.comandos`, `billing.eventos`,
 `execucao.eventos`, `billing.eventos.dlt`, `execucao.eventos.dlt`.
@@ -33,9 +52,9 @@ no Job e reaplique (`kubectl delete job kafka-topicos -n autocenter` antes, pois
 o spec do Job e imutavel).
 
 ## Como conectar
-**Servico dentro do cluster (namespace `autocenter`):**
-`SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092` (de outro namespace:
-`kafka.autocenter.svc.cluster.local:9092`). Nos Deployments do servico use
+**Servico dentro do cluster:**
+`kafka.autocenter.svc.cluster.local:9092` (no namespace `autocenter` tambem vale `kafka:9092`). O broker se
+anuncia com o nome completo, entao clientes de outros namespaces (Billing, Execucao) conseguem conectar. Nos Deployments do servico use
 `enableServiceLinks: false` se o pod usar imagem que le variaveis `KAFKA_*`.
 
 **Carregar sua imagem no kind (sem registry):**
