@@ -68,4 +68,5 @@ ${K} -n autocenter delete job kafka-topicos --ignore-not-found
 ${K} apply -k "${MANIFESTOS}"
 
 ${K} -n autocenter rollout status statefulset/kafka --timeout=240s
+"${RAIZ}/scripts/datadog.sh" "${AMBIENTE}"
 echo "Pronto. Aguarde o job: kubectl --context ${CTX} -n autocenter wait --for=condition=complete job/kafka-topicos --timeout=180s"

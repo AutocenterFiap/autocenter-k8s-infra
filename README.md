@@ -95,19 +95,45 @@ local. Se um topico for apagado por engano, recrie com o Job `kafka-topicos`
 
 Num cluster ja existente, basta: `kubectl --context kind-autocenter apply -f k8s/kafka-ui.yaml`.
 
-## Datadog (opcional, fora do apply padrao)
-`k8s/datadog.yaml` nao entra no `k8s/kustomization.yaml`: sem o Secret o pod
-ficaria travado. Para usar:
+## Datadog (uma conta por ambiente)
+Cada cluster envia para a sua propria conta do Datadog: `autocenter` (producao) usa a chave da conta de
+producao e `autocenter-qa` (homologacao) a da conta de QA. Os dados dos ambientes nunca se misturam.
+
+| | Producao (`autocenter`) | Homologacao (`autocenter-qa`) |
+|---|---|---|
+| Variaveis | `DD_API_KEY_PROD`, `DD_SITE_PROD` | `DD_API_KEY_QA`, `DD_SITE_QA` |
+| Manifestos | `k8s/datadog/` | `overlays/qa/datadog/` |
+| `DD_CLUSTER_NAME` / `DD_ENV` do agent | `kind-autocenter` / `prod` | `kind-autocenter-qa` / `qa` |
+
+As chaves ficam num arquivo local, nunca no git:
 ```bash
-kubectl --context kind-autocenter -n autocenter create secret generic datadog-secret \
-  --from-literal=api-key='<SUA_DD_API_KEY>'
-kubectl --context kind-autocenter apply -f k8s/datadog.yaml
+cat > ~/.autocenter-datadog.env <<'FIM'
+export DD_API_KEY_PROD=<chave da conta de producao>
+export DD_API_KEY_QA=<chave da conta de QA>
+export DD_SITE_PROD=datadoghq.com
+export DD_SITE_QA=datadoghq.com
+FIM
+chmod 600 ~/.autocenter-datadog.env
 ```
-Nunca versione a chave. Baseado em `autocenter/terraform/datadog.tf` (agent 7.83.1),
-adaptado ao containerd do kind (socket `/run/containerd/containerd.sock`).
-Validado apenas que o pod sobe e detecta containerd/kubelet; a **entrega real ao
-Datadog nao foi validada** (ainda nao ha chave real; com chave falsa o agent
-recebe 403).
+`DD_SITE` depende da regiao da conta (URL do navegador): `app.datadoghq.com` = `datadoghq.com`,
+`us3.datadoghq.com`, `us5.datadoghq.com`, `app.datadoghq.eu` = `datadoghq.eu`. Sem a variavel, vale `datadoghq.com`.
+
+Subir ou atualizar o agent (so mexe no Datadog do cluster escolhido):
+```bash
+source ~/.autocenter-datadog.env
+./scripts/datadog.sh qa
+./scripts/datadog.sh dev
+```
+O `criar-cluster.sh` tambem chama o `datadog.sh` no final. Sem a chave do ambiente, o agent nao e instalado
+e o script so avisa. Antes de aplicar, a chave e validada na API do Datadog; chaves iguais nos dois ambientes
+sao recusadas. Trocar a chave e rodar de novo reinicia o agent com a chave nova.
+
+O agent (7.83.1, adaptado ao containerd do kind) coleta metricas, logs de todos os containers e traces (APM).
+Os servicos enviam traces para `status.hostIP:8126`, por isso o agent expoe `hostPort: 8126`.
+
+Conferir: `kubectl --context kind-autocenter-qa -n autocenter exec ds/datadog -- agent status`.
+Remover de um cluster: `kubectl --context kind-autocenter-qa delete -k overlays/qa/datadog` e
+`kubectl --context kind-autocenter-qa -n autocenter delete secret datadog-secret`.
 
 ## Remover
 `kind delete cluster --name autocenter` (apenas este; nao afeta outros clusters).
