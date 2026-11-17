@@ -46,6 +46,15 @@ spec:
       containers:
         - name: agent
           image: gcr.io/datadoghq/agent:7.83.1
+          ports:
+            - name: traceport
+              containerPort: 8126
+              hostPort: 8126
+              protocol: TCP
+            - name: dogstatsdport
+              containerPort: 8125
+              hostPort: 8125
+              protocol: UDP
           env:
             - name: DD_API_KEY
               valueFrom:
@@ -53,9 +62,14 @@ spec:
                   name: datadog-secret
                   key: api-key
             - name: DD_SITE
-              value: datadoghq.com
+              valueFrom:
+                secretKeyRef:
+                  name: datadog-secret
+                  key: site
             - name: DD_CLUSTER_NAME
               value: kind-autocenter
+            - name: DD_ENV
+              value: prod
             - name: DD_KUBERNETES_KUBELET_NODENAME
               valueFrom:
                 fieldRef:
@@ -82,6 +96,10 @@ spec:
               value: "true"
             - name: DD_APM_IGNORE_RESOURCES
               value: "(GET|HEAD) /actuator/.*"
+            - name: DD_DOGSTATSD_NON_LOCAL_TRAFFIC
+              value: "true"
+            - name: DD_IGNORE_AUTOCONF
+              value: "etcd kube_controller_manager kube_scheduler"
             - name: DD_PROCESS_AGENT_ENABLED
               value: "false"
             - name: DD_CONTAINER_EXCLUDE
