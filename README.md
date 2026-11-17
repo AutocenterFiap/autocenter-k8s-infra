@@ -144,8 +144,13 @@ Os dashboards ficam versionados em `datadog/dashboards/` e sao publicados pela A
 | `visao-geral.json` | Saude agora (req/s, % erro, p95, erros em log), tabela por servico, trafego, fluxo da Saga, pods e ultimos erros |
 | `analise-de-erros.json` | 2xx/4xx/5xx, endpoints com mais erros e mais lentos, erros de Kafka, HTTP de saida, banco e tarefas agendadas, logs e pods |
 | `infra-e-jvm.json` | CPU e memoria dos pods x limite, restarts, heap, GC, threads, Kafka e bancos, no do cluster |
+| `servico-os.json` | OS abertas, canceladas, entregues e estornos; outbox e prazo de pagamento; Kafka; chamadas ao Cadastro; MySQL |
+| `servico-cadastro.json` | Cadastros por entidade, buscas sem resultado (404), entrada e saida de estoque, quem chama o Cadastro; MySQL |
+| `servico-billing.json` | Funil do orcamento, pagamentos confirmados/recusados/estornados, webhook e API do Mercado Pago; Kafka; MySQL |
+| `servico-execucao.json` | Diagnosticos, finalizacoes e falhas, operacoes recusadas (409/422), fila; Kafka; MongoDB |
 
-Todos tem os filtros `env` e `service` no topo. Para publicar e preciso uma **Application Key** da
+Os gerais tem os filtros `env` e `service` no topo; os de servico, so `env`. Todos os de servico trazem
+tambem saude, tabela por endpoint, pods, JVM e logs do proprio servico. Para publicar e preciso uma **Application Key** da
 mesma conta da API key (Organization Settings > Application Keys), no arquivo de chaves:
 ```bash
 export DD_APP_KEY_QA=<application key da conta de QA>
