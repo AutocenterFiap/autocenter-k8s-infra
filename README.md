@@ -131,7 +131,33 @@ sao recusadas. Trocar a chave e rodar de novo reinicia o agent com a chave nova.
 O agent (7.83.1, adaptado ao containerd do kind) coleta metricas, logs de todos os containers e traces (APM).
 Os servicos enviam traces para `status.hostIP:8126`, por isso o agent expoe `hostPort: 8126`.
 
+O agent tambem expoe `hostPort: 8125/UDP` (DogStatsD), por onde o tracer envia as metricas de JVM, e
+ignora os checks de etcd, scheduler e controller-manager, que no kind so escutam em localhost.
+
 Conferir: `kubectl --context kind-autocenter-qa -n autocenter exec ds/datadog -- agent status`.
+
+### Dashboards
+Os dashboards ficam versionados em `datadog/dashboards/` e sao publicados pela API:
+
+| Dashboard | Conteudo |
+|---|---|
+| `visao-geral.json` | Saude agora (req/s, % erro, p95, erros em log), tabela por servico, trafego, fluxo da Saga, pods e ultimos erros |
+| `analise-de-erros.json` | 2xx/4xx/5xx, endpoints com mais erros e mais lentos, erros de Kafka, HTTP de saida, banco e tarefas agendadas, logs e pods |
+| `infra-e-jvm.json` | CPU e memoria dos pods x limite, restarts, heap, GC, threads, Kafka e bancos, no do cluster |
+
+Todos tem os filtros `env` e `service` no topo. Para publicar e preciso uma **Application Key** da
+mesma conta da API key (Organization Settings > Application Keys), no arquivo de chaves:
+```bash
+export DD_APP_KEY_QA=<application key da conta de QA>
+export DD_APP_KEY_PROD=<application key da conta de producao>
+```
+```bash
+source ~/.autocenter-datadog.env
+./scripts/datadog-dashboards.sh qa
+./scripts/datadog-dashboards.sh dev
+```
+O script cria ou atualiza pelo titulo, entao pode rodar de novo. Alteracoes feitas na tela do Datadog sao
+sobrescritas na proxima execucao: edite o JSON (ou exporte pela tela e substitua o arquivo).
 Remover de um cluster: `kubectl --context kind-autocenter-qa delete -k overlays/qa/datadog` e
 `kubectl --context kind-autocenter-qa -n autocenter delete secret datadog-secret`.
 

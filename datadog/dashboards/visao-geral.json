@@ -1,0 +1,949 @@
+{
+  "title": "AutoCenter - Visao geral",
+  "description": "Saude dos servicos OS, Cadastro, Billing e Execucao: trafego, erros, latencia, Saga e pods.",
+  "layout_type": "ordered",
+  "reflow_type": "fixed",
+  "template_variables": [
+    {
+      "name": "env",
+      "prefix": "env",
+      "available_values": [],
+      "default": "*"
+    },
+    {
+      "name": "service",
+      "prefix": "service",
+      "available_values": [],
+      "default": "*"
+    }
+  ],
+  "notify_list": [],
+  "widgets": [
+    {
+      "definition": {
+        "type": "group",
+        "title": "Saude agora",
+        "background_color": "vivid_green",
+        "show_title": true,
+        "layout_type": "ordered",
+        "widgets": [
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "Requisicoes/s",
+              "title_size": "16",
+              "title_align": "left",
+              "precision": 1,
+              "autoscale": true,
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "sum:trace.servlet.request.hits{$env,$service}.as_rate()",
+                      "aggregator": "avg"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "q1"
+                    }
+                  ]
+                }
+              ],
+              "custom_unit": "req/s"
+            },
+            "layout": {
+              "x": 0,
+              "y": 0,
+              "width": 3,
+              "height": 2
+            }
+          },
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "% de erro (5xx)",
+              "title_size": "16",
+              "title_align": "left",
+              "precision": 2,
+              "autoscale": true,
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "sum:trace.servlet.request.errors{$env,$service}.as_count()",
+                      "aggregator": "sum"
+                    },
+                    {
+                      "data_source": "metrics",
+                      "name": "q2",
+                      "query": "sum:trace.servlet.request.hits{$env,$service}.as_count()",
+                      "aggregator": "sum"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "100 * default_zero(q1) / q2",
+                      "conditional_formats": [
+                        {
+                          "comparator": ">=",
+                          "value": 5,
+                          "palette": "white_on_red"
+                        },
+                        {
+                          "comparator": ">=",
+                          "value": 1,
+                          "palette": "white_on_yellow"
+                        },
+                        {
+                          "comparator": "<",
+                          "value": 1,
+                          "palette": "white_on_green"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "custom_unit": "%"
+            },
+            "layout": {
+              "x": 3,
+              "y": 0,
+              "width": 3,
+              "height": 2
+            }
+          },
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "Latencia p95",
+              "title_size": "16",
+              "title_align": "left",
+              "precision": 0,
+              "autoscale": true,
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "p95:trace.servlet.request{$env,$service}",
+                      "aggregator": "max"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "q1 * 1000",
+                      "conditional_formats": [
+                        {
+                          "comparator": ">=",
+                          "value": 1500,
+                          "palette": "white_on_red"
+                        },
+                        {
+                          "comparator": ">=",
+                          "value": 500,
+                          "palette": "white_on_yellow"
+                        },
+                        {
+                          "comparator": "<",
+                          "value": 500,
+                          "palette": "white_on_green"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "custom_unit": "ms"
+            },
+            "layout": {
+              "x": 6,
+              "y": 0,
+              "width": 3,
+              "height": 2
+            }
+          },
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "Erros em log",
+              "title_size": "16",
+              "title_align": "left",
+              "precision": 0,
+              "autoscale": true,
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "logs",
+                      "name": "q1",
+                      "indexes": [
+                        "*"
+                      ],
+                      "compute": {
+                        "aggregation": "count"
+                      },
+                      "search": {
+                        "query": "status:error $env $service"
+                      }
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "q1",
+                      "conditional_formats": [
+                        {
+                          "comparator": ">=",
+                          "value": 20,
+                          "palette": "white_on_red"
+                        },
+                        {
+                          "comparator": ">=",
+                          "value": 1,
+                          "palette": "white_on_yellow"
+                        },
+                        {
+                          "comparator": "<",
+                          "value": 1,
+                          "palette": "white_on_green"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "layout": {
+              "x": 9,
+              "y": 0,
+              "width": 3,
+              "height": 2
+            }
+          },
+          {
+            "definition": {
+              "type": "query_table",
+              "title": "Saude por servico",
+              "title_size": "16",
+              "title_align": "left",
+              "has_search_bar": "never",
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "sum:trace.servlet.request.hits{$env,$service} by {service}.as_count()",
+                      "aggregator": "sum"
+                    },
+                    {
+                      "data_source": "metrics",
+                      "name": "q2",
+                      "query": "sum:trace.servlet.request.errors{$env,$service} by {service}.as_count()",
+                      "aggregator": "sum"
+                    },
+                    {
+                      "data_source": "metrics",
+                      "name": "q3",
+                      "query": "p95:trace.servlet.request{$env,$service} by {service}",
+                      "aggregator": "max"
+                    },
+                    {
+                      "data_source": "metrics",
+                      "name": "q4",
+                      "query": "sum:trace.servlet.request.hits{$env,$service,http.status_code:4*} by {service}.as_count()",
+                      "aggregator": "sum"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "q1",
+                      "alias": "Requisicoes"
+                    },
+                    {
+                      "formula": "default_zero(q4)",
+                      "alias": "Respostas 4xx"
+                    },
+                    {
+                      "formula": "default_zero(q2)",
+                      "alias": "Erros 5xx"
+                    },
+                    {
+                      "formula": "100 * default_zero(q2) / q1",
+                      "alias": "% erro",
+                      "conditional_formats": [
+                        {
+                          "comparator": ">=",
+                          "value": 5,
+                          "palette": "white_on_red"
+                        },
+                        {
+                          "comparator": ">=",
+                          "value": 1,
+                          "palette": "white_on_yellow"
+                        },
+                        {
+                          "comparator": "<",
+                          "value": 1,
+                          "palette": "white_on_green"
+                        }
+                      ]
+                    },
+                    {
+                      "formula": "q3 * 1000",
+                      "alias": "p95 (ms)",
+                      "conditional_formats": [
+                        {
+                          "comparator": ">=",
+                          "value": 1500,
+                          "palette": "white_on_red"
+                        },
+                        {
+                          "comparator": ">=",
+                          "value": 500,
+                          "palette": "white_on_yellow"
+                        },
+                        {
+                          "comparator": "<",
+                          "value": 500,
+                          "palette": "white_on_green"
+                        }
+                      ]
+                    }
+                  ],
+                  "sort": {
+                    "count": 10,
+                    "order_by": [
+                      {
+                        "type": "formula",
+                        "index": 0,
+                        "order": "desc"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "layout": {
+              "x": 0,
+              "y": 2,
+              "width": 12,
+              "height": 3
+            }
+          }
+        ]
+      },
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "width": 12,
+        "height": 6,
+        "is_column_break": false
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "Trafego e latencia",
+        "background_color": "vivid_blue",
+        "show_title": true,
+        "layout_type": "ordered",
+        "widgets": [
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Requisicoes por servico",
+              "title_size": "16",
+              "title_align": "left",
+              "show_legend": true,
+              "legend_layout": "auto",
+              "legend_columns": [
+                "avg",
+                "max",
+                "value"
+              ],
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "sum:trace.servlet.request.hits{$env,$service} by {service}.as_count()"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "q1"
+                    }
+                  ],
+                  "display_type": "bars",
+                  "style": {
+                    "palette": "dog_classic",
+                    "line_type": "solid",
+                    "line_width": "normal"
+                  }
+                }
+              ]
+            },
+            "layout": {
+              "x": 0,
+              "y": 0,
+              "width": 6,
+              "height": 3
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "% de erro por servico",
+              "title_size": "16",
+              "title_align": "left",
+              "show_legend": true,
+              "legend_layout": "auto",
+              "legend_columns": [
+                "avg",
+                "max",
+                "value"
+              ],
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "sum:trace.servlet.request.errors{$env,$service} by {service}.as_count()"
+                    },
+                    {
+                      "data_source": "metrics",
+                      "name": "q2",
+                      "query": "sum:trace.servlet.request.hits{$env,$service} by {service}.as_count()"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "100 * default_zero(q1) / q2",
+                      "alias": "% erro"
+                    }
+                  ],
+                  "display_type": "line",
+                  "style": {
+                    "palette": "dog_classic",
+                    "line_type": "solid",
+                    "line_width": "normal"
+                  }
+                }
+              ],
+              "markers": [
+                {
+                  "value": "y = 5",
+                  "display_type": "error dashed",
+                  "label": "limite 5%"
+                }
+              ]
+            },
+            "layout": {
+              "x": 6,
+              "y": 0,
+              "width": 6,
+              "height": 3
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Latencia p95 por servico (ms)",
+              "title_size": "16",
+              "title_align": "left",
+              "show_legend": true,
+              "legend_layout": "auto",
+              "legend_columns": [
+                "avg",
+                "max",
+                "value"
+              ],
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "p95:trace.servlet.request{$env,$service} by {service}"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "q1 * 1000"
+                    }
+                  ],
+                  "display_type": "line",
+                  "style": {
+                    "palette": "dog_classic",
+                    "line_type": "solid",
+                    "line_width": "normal"
+                  }
+                }
+              ],
+              "markers": [
+                {
+                  "value": "y = 1500",
+                  "display_type": "error dashed",
+                  "label": "1,5 s"
+                }
+              ]
+            },
+            "layout": {
+              "x": 0,
+              "y": 3,
+              "width": 6,
+              "height": 3
+            }
+          },
+          {
+            "definition": {
+              "type": "toplist",
+              "title": "Endpoints mais chamados",
+              "title_size": "16",
+              "title_align": "left",
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "sum:trace.servlet.request.hits{$env,$service} by {service,resource_name}.as_count()",
+                      "aggregator": "sum"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "q1",
+                      "limit": {
+                        "count": 10,
+                        "order": "desc"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "layout": {
+              "x": 6,
+              "y": 3,
+              "width": 6,
+              "height": 3
+            }
+          }
+        ]
+      },
+      "layout": {
+        "x": 0,
+        "y": 6,
+        "width": 12,
+        "height": 7,
+        "is_column_break": false
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "Fluxo da Saga (Kafka e chamadas entre servicos)",
+        "background_color": "vivid_purple",
+        "show_title": true,
+        "layout_type": "ordered",
+        "widgets": [
+          {
+            "definition": {
+              "type": "note",
+              "content": "OS publica em `os.eventos`; Billing e Execucao consomem, processam e respondem em `billing.eventos` / `execucao.eventos`. Mensagens produzidas sem consumo correspondente indicam Saga parada.",
+              "background_color": "gray",
+              "font_size": "14",
+              "text_align": "left",
+              "vertical_align": "center",
+              "show_tick": false,
+              "has_padding": true
+            },
+            "layout": {
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 1
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Mensagens produzidas por topico",
+              "title_size": "16",
+              "title_align": "left",
+              "show_legend": true,
+              "legend_layout": "auto",
+              "legend_columns": [
+                "avg",
+                "max",
+                "value"
+              ],
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "sum:trace.kafka.produce.hits{$env,$service} by {service,resource_name}.as_count()"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "q1"
+                    }
+                  ],
+                  "display_type": "bars",
+                  "style": {
+                    "palette": "dog_classic",
+                    "line_type": "solid",
+                    "line_width": "normal"
+                  }
+                }
+              ]
+            },
+            "layout": {
+              "x": 0,
+              "y": 1,
+              "width": 6,
+              "height": 3
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Mensagens consumidas por servico e topico",
+              "title_size": "16",
+              "title_align": "left",
+              "show_legend": true,
+              "legend_layout": "auto",
+              "legend_columns": [
+                "avg",
+                "max",
+                "value"
+              ],
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "sum:trace.kafka.consume.hits{$env,$service} by {service,resource_name}.as_count()"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "q1"
+                    }
+                  ],
+                  "display_type": "bars",
+                  "style": {
+                    "palette": "dog_classic",
+                    "line_type": "solid",
+                    "line_width": "normal"
+                  }
+                }
+              ]
+            },
+            "layout": {
+              "x": 6,
+              "y": 1,
+              "width": 6,
+              "height": 3
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Chamadas HTTP de saida (Cadastro, Mercado Pago)",
+              "title_size": "16",
+              "title_align": "left",
+              "show_legend": true,
+              "legend_layout": "auto",
+              "legend_columns": [
+                "avg",
+                "max",
+                "value"
+              ],
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "sum:trace.http.request.hits{$env,$service} by {service}.as_count()"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "q1"
+                    }
+                  ],
+                  "display_type": "bars",
+                  "style": {
+                    "palette": "dog_classic",
+                    "line_type": "solid",
+                    "line_width": "normal"
+                  }
+                }
+              ]
+            },
+            "layout": {
+              "x": 0,
+              "y": 4,
+              "width": 6,
+              "height": 3
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Latencia p95 das chamadas de saida (ms)",
+              "title_size": "16",
+              "title_align": "left",
+              "show_legend": true,
+              "legend_layout": "auto",
+              "legend_columns": [
+                "avg",
+                "max",
+                "value"
+              ],
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "p95:trace.http.request{$env,$service} by {service}"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "q1 * 1000"
+                    }
+                  ],
+                  "display_type": "line",
+                  "style": {
+                    "palette": "dog_classic",
+                    "line_type": "solid",
+                    "line_width": "normal"
+                  }
+                }
+              ]
+            },
+            "layout": {
+              "x": 6,
+              "y": 4,
+              "width": 6,
+              "height": 3
+            }
+          }
+        ]
+      },
+      "layout": {
+        "x": 0,
+        "y": 13,
+        "width": 12,
+        "height": 8,
+        "is_column_break": false
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "Pods",
+        "background_color": "vivid_orange",
+        "show_title": true,
+        "layout_type": "ordered",
+        "widgets": [
+          {
+            "definition": {
+              "type": "toplist",
+              "title": "Restarts por container",
+              "title_size": "16",
+              "title_align": "left",
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "max:kubernetes.containers.restarts{$env,$service,kube_container_name:(os-service OR cadastro-service OR auto-center-execucao OR autocenter-billing-service)} by {kube_container_name}",
+                      "aggregator": "last"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "q1",
+                      "limit": {
+                        "count": 10,
+                        "order": "desc"
+                      },
+                      "conditional_formats": [
+                        {
+                          "comparator": ">=",
+                          "value": 3,
+                          "palette": "white_on_red"
+                        },
+                        {
+                          "comparator": ">=",
+                          "value": 1,
+                          "palette": "white_on_yellow"
+                        },
+                        {
+                          "comparator": "<",
+                          "value": 1,
+                          "palette": "white_on_green"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "layout": {
+              "x": 0,
+              "y": 0,
+              "width": 6,
+              "height": 3
+            }
+          },
+          {
+            "definition": {
+              "type": "toplist",
+              "title": "Memoria usada / limite (%)",
+              "title_size": "16",
+              "title_align": "left",
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "q1",
+                      "query": "avg:kubernetes.memory.usage{$env,$service,kube_container_name:(os-service OR cadastro-service OR auto-center-execucao OR autocenter-billing-service)} by {pod_name}",
+                      "aggregator": "last"
+                    },
+                    {
+                      "data_source": "metrics",
+                      "name": "q2",
+                      "query": "avg:kubernetes.memory.limits{$env,$service,kube_container_name:(os-service OR cadastro-service OR auto-center-execucao OR autocenter-billing-service)} by {pod_name}",
+                      "aggregator": "last"
+                    }
+                  ],
+                  "formulas": [
+                    {
+                      "formula": "100 * q1 / q2",
+                      "limit": {
+                        "count": 10,
+                        "order": "desc"
+                      },
+                      "conditional_formats": [
+                        {
+                          "comparator": ">=",
+                          "value": 90,
+                          "palette": "white_on_red"
+                        },
+                        {
+                          "comparator": ">=",
+                          "value": 75,
+                          "palette": "white_on_yellow"
+                        },
+                        {
+                          "comparator": "<",
+                          "value": 75,
+                          "palette": "white_on_green"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "layout": {
+              "x": 6,
+              "y": 0,
+              "width": 6,
+              "height": 3
+            }
+          }
+        ]
+      },
+      "layout": {
+        "x": 0,
+        "y": 21,
+        "width": 12,
+        "height": 4,
+        "is_column_break": false
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "Ultimos erros",
+        "background_color": "vivid_pink",
+        "show_title": true,
+        "layout_type": "ordered",
+        "widgets": [
+          {
+            "definition": {
+              "type": "log_stream",
+              "title": "Logs de erro",
+              "title_size": "16",
+              "title_align": "left",
+              "indexes": [],
+              "query": "status:error $env $service",
+              "columns": [
+                "service",
+                "host"
+              ],
+              "sort": {
+                "column": "time",
+                "order": "desc"
+              },
+              "message_display": "expanded-md",
+              "show_date_column": true,
+              "show_message_column": true
+            },
+            "layout": {
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 4
+            }
+          }
+        ]
+      },
+      "layout": {
+        "x": 0,
+        "y": 25,
+        "width": 12,
+        "height": 5,
+        "is_column_break": false
+      }
+    }
+  ]
+}
